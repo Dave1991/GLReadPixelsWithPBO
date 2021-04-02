@@ -6,6 +6,7 @@
 //
 
 #import "ViewController.h"
+#import "GLTriangleView.h"
 
 @interface ViewController ()
 
@@ -16,6 +17,8 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
     // Do any additional setup after loading the view.
+    GLTriangleView *triangleView = [[GLTriangleView alloc] initWithFrame:self.view.bounds];
+    [self.view addSubview:triangleView];
 }
 
 

@@ -14,6 +14,8 @@
 		593C74E62615D302000EE499 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 593C74E52615D302000EE499 /* Assets.xcassets */; };
 		593C74E92615D302000EE499 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 593C74E72615D302000EE499 /* LaunchScreen.storyboard */; };
 		593C74EC2615D302000EE499 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 593C74EB2615D302000EE499 /* main.m */; };
+		593C74F72615E422000EE499 /* GLTriangleView.mm in Sources */ = {isa = PBXBuildFile; fileRef = 593C74F52615E422000EE499 /* GLTriangleView.mm */; };
+		593C74FB2615E838000EE499 /* GLHelper.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 593C74F92615E838000EE499 /* GLHelper.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -29,6 +31,10 @@
 		593C74E82615D302000EE499 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		593C74EA2615D302000EE499 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		593C74EB2615D302000EE499 /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
+		593C74F52615E422000EE499 /* GLTriangleView.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = GLTriangleView.mm; sourceTree = "<group>"; };
+		593C74F62615E422000EE499 /* GLTriangleView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = GLTriangleView.h; sourceTree = "<group>"; };
+		593C74F92615E838000EE499 /* GLHelper.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = GLHelper.cpp; sourceTree = "<group>"; };
+		593C74FA2615E838000EE499 /* GLHelper.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = GLHelper.hpp; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -61,6 +67,8 @@
 		593C74D82615D301000EE499 /* GLReadPixelsWithPBO */ = {
 			isa = PBXGroup;
 			children = (
+				593C74F62615E422000EE499 /* GLTriangleView.h */,
+				593C74F52615E422000EE499 /* GLTriangleView.mm */,
 				593C74D92615D301000EE499 /* AppDelegate.h */,
 				593C74DA2615D301000EE499 /* AppDelegate.m */,
 				593C74DC2615D301000EE499 /* SceneDelegate.h */,
@@ -72,6 +80,8 @@
 				593C74E72615D302000EE499 /* LaunchScreen.storyboard */,
 				593C74EA2615D302000EE499 /* Info.plist */,
 				593C74EB2615D302000EE499 /* main.m */,
+				593C74F92615E838000EE499 /* GLHelper.cpp */,
+				593C74FA2615E838000EE499 /* GLHelper.hpp */,
 			);
 			path = GLReadPixelsWithPBO;
 			sourceTree = "<group>";
@@ -145,9 +155,11 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				593C74FB2615E838000EE499 /* GLHelper.cpp in Sources */,
 				593C74E12615D301000EE499 /* ViewController.m in Sources */,
 				593C74DB2615D301000EE499 /* AppDelegate.m in Sources */,
 				593C74EC2615D302000EE499 /* main.m in Sources */,
+				593C74F72615E422000EE499 /* GLTriangleView.mm in Sources */,
 				593C74DE2615D301000EE499 /* SceneDelegate.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -292,7 +304,10 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				INFOPLIST_FILE = GLReadPixelsWithPBO/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -309,7 +324,9 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = YES;
 				INFOPLIST_FILE = GLReadPixelsWithPBO/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
