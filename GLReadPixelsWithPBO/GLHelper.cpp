@@ -116,17 +116,44 @@ void GLHelper::DoRender() {
     glDrawArrays(GL_TRIANGLES,
                  0,
                  3);
+    
+#if USE_PBO
+    for(auto it = mCb.begin(); it != mCb.end(); )
+    {
+        if(--it->remainFrames <= 0)
+        {
+            size_t size = 4 * mWidth * mHeight;
+            glBindBuffer(GL_PIXEL_PACK_BUFFER, it->pbo);
+            GLchar *pixels = static_cast<GLchar*>(glMapBufferRange(GL_PIXEL_PACK_BUFFER, 0, size, GL_MAP_READ_BIT));
+            it->cb(mWidth, mHeight, size, pixels);
+            glUnmapBuffer(GL_PIXEL_PACK_BUFFER);
+            glDeleteBuffers(1, &it->pbo);
+            it = mCb.erase(it);
+        }
+        else
+        {
+            ++it;
+        }
+    }
+#endif
 }
 
 void GLHelper::GetPixels(GetPixelsCallback getPixelsCallback) {
-    GLchar *pixels = (GLchar *)malloc(sizeof(GLchar) * 4 * mWidth * mHeight);
+    size_t size = 4 * mWidth * mHeight;
+    
+#if USE_PBO
+    GLuint pboBuffer;
+    glGenBuffers(1, &pboBuffer);
+    glBindBuffer(GL_PIXEL_PACK_BUFFER, pboBuffer);
+    glBufferData(GL_PIXEL_PACK_BUFFER, size, 0, GL_STREAM_READ);
+    glReadPixels(0, 0, mWidth, mHeight, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+    mCb.emplace_back(2, pboBuffer, std::move(getPixelsCallback));
+#else
+    GLchar *pixels = (GLchar *)malloc(size);
     glReadPixels(0, 0, mWidth, mHeight, GL_RGBA, GL_UNSIGNED_BYTE, (GLvoid *)pixels);
-    if (getPixelsCallback) {
-        getPixelsCallback(mWidth, mHeight, sizeof(GLchar) * 4 * mWidth * mHeight, pixels);
-    }
-    if (pixels) {
-        free(pixels);
-    }
+    getPixelsCallback(mWidth, mHeight, size, pixels);
+    free(pixels);
+#endif
 }
 
 
