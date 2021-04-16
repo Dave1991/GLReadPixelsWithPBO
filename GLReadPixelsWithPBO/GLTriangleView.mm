@@ -8,6 +8,7 @@
 
 #include "GLHelper.hpp"
 #include <memory>
+#import <CoreVideo/CVOpenGLESTextureCache.h>
 
 @interface GLTriangleView () {
     std::shared_ptr<GLHelper> _glHelper;
@@ -39,6 +40,61 @@
         [self settingContext];
         
         CGFloat scale = [UIScreen mainScreen].scale;
+        if ([GLTriangleView supportsFastTextureUpload])
+        {
+            CVOpenGLESTextureCacheRef coreVideoTextureCache;
+            CVReturn err = CVOpenGLESTextureCacheCreate(kCFAllocatorDefault, NULL, (__bridge void *)self.context, NULL, &coreVideoTextureCache);
+            if (err)
+            {
+                NSAssert(NO, @"Error at CVOpenGLESTextureCacheCreate %d");
+            }
+
+            CVPixelBufferPoolCreatePixelBuffer (NULL, [assetWriterPixelBufferInput pixelBufferPool], &renderTarget);
+
+            CVOpenGLESTextureRef renderTexture;
+            CVOpenGLESTextureCacheCreateTextureFromImage (kCFAllocatorDefault, coreVideoTextureCache, renderTarget,
+                                                          NULL, // texture attributes
+                                                          GL_TEXTURE_2D,
+                                                          GL_RGBA, // opengl format
+                                                          (int)videoSize.width,
+                                                          (int)videoSize.height,
+                                                          GL_BGRA, // native iOS format
+                                                          GL_UNSIGNED_BYTE,
+                                                          0,
+                                                          &renderTexture);
+
+            glBindTexture(CVOpenGLESTextureGetTarget(renderTexture), CVOpenGLESTextureGetName(renderTexture));
+            glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, CVOpenGLESTextureGetName(renderTexture), 0);
+            
+            CVReturn err = CVOpenGLESTextureCacheCreate(kCFAllocatorDefault, NULL, (__bridge void *)[[GPUImageOpenGLESContext sharedImageProcessingOpenGLESContext] context], NULL, &coreVideoTextureCache);
+                if (err)
+                {
+                    NSAssert(NO, @"Error at CVOpenGLESTextureCacheCreate %d");
+                }
+
+                CVPixelBufferPoolCreatePixelBuffer (NULL, [assetWriterPixelBufferInput pixelBufferPool], &renderTarget);
+
+                CVOpenGLESTextureRef renderTexture;
+                CVOpenGLESTextureCacheCreateTextureFromImage (kCFAllocatorDefault, coreVideoTextureCache, renderTarget,
+                                                              NULL, // texture attributes
+                                                              GL_TEXTURE_2D,
+                                                              GL_RGBA, // opengl format
+                                                              (int)videoSize.width,
+                                                              (int)videoSize.height,
+                                                              GL_BGRA, // native iOS format
+                                                              GL_UNSIGNED_BYTE,
+                                                              0,
+                                                              &renderTexture);
+
+                glBindTexture(CVOpenGLESTextureGetTarget(renderTexture), CVOpenGLESTextureGetName(renderTexture));
+                glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+                glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+                glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, CVOpenGLESTextureGetName(renderTexture), 0);
+        }
         _glHelper = std::make_shared<GLHelper>((int)CGRectGetWidth(frame) * scale, (int)CGRectGetHeight(frame) * scale);
 
         [self bindDrawableObjectToRenderBuffer];
@@ -48,6 +104,26 @@
         [self addSubview:self.rbImageView];
     }
     return self;
+}
+
+- (void)setPBOEnable:(BOOL)pboEnable {
+    _glHelper->SetPBOEnable(pboEnable);
+}
+
+#pragma mark -
+#pragma mark Manage fast texture upload
++ (BOOL)supportsFastTextureUpload;
+{
+#if TARGET_IPHONE_SIMULATOR
+    return NO;
+#else
+    
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wtautological-pointer-compare"
+    return (CVOpenGLESTextureCacheCreate != NULL);
+#pragma clang diagnostic pop
+    
+#endif
 }
 
 - (void)initLayer {
@@ -109,8 +185,11 @@
     if (self.isOnScreen) {
         [self present];
     } else {
-        _glHelper->GetPixels([&](int width, int height, uint64_t byteSize, GLchar *pixels) {
+        _glHelper->GetPixels([&](int width, int height, uint64_t byteSize, GLchar *pixels, double readTime) {
             [self updateViewWithPixels:(unsigned char *)pixels width:width height:height byteSize:byteSize];
+            if ([self.delegate respondsToSelector:@selector(onUpdate:readTime:)]) {
+                [self.delegate onUpdate:self readTime:readTime];
+            }
         });
     }
 }
@@ -125,7 +204,7 @@
 
 - (void)bindDrawableObjectToRenderBuffer {
     
-    [self.context renderbufferStorage:GL_RENDERBUFFER fromDrawable:(CAEAGLLayer *)self.layer];
+//    [self.context renderbufferStorage:GL_RENDERBUFFER fromDrawable:(CAEAGLLayer *)self.layer];
     
 }
 

@@ -9,17 +9,35 @@
 #include <stdio.h>
 #include <cstdlib>
 
+#define USE_PBO_CB 0
+#define USE_RB 0
+
 typedef struct {
     GLfloat position[3];
 } Vertex3;
 
-GLHelper::GLHelper(int width, int height):mWidth(width), mHeight(height) {
+GLHelper::GLHelper(int width, int height, GLuint shareTextureID):mWidth(width), mHeight(height) {
+#if USE_RB
     glGenRenderbuffers(1, &mRenderBufferID);
     glBindRenderbuffer(GL_RENDERBUFFER, mRenderBufferID);
+#else
+    if (shareTextureID > 0) {
+        // use CVOpenGLESTextureRef
+        mOffscreenTextureID = shareTextureID;
+    } else {
+        glGenTextures(1, &mOffscreenTextureID);
+    }
+    glBindTexture(GL_TEXTURE_2D, mOffscreenTextureID);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, mWidth, mHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+#endif
     
     glGenFramebuffers(1, &mFrameBufferID);
     glBindFramebuffer(GL_FRAMEBUFFER, mFrameBufferID);
+#if USE_RB
     glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, mRenderBufferID);
+#else
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, mOffscreenTextureID, 0);
+#endif
     
     InitVBO();
     
@@ -44,6 +62,14 @@ void GLHelper::InitVBO() {
                  sizeof(vertices),  // 创建的 缓存块 尺寸
                  vertices,          // 要绑定的顶点数据
                  GL_STATIC_DRAW);   // 缓存块 用途
+    
+    glGenBuffers(PBO_COUNT, mPboIds);
+    size_t size = 4 * mWidth * mHeight;
+    for (int i = 0; i < PBO_COUNT; ++i) {
+        glBindBuffer(GL_PIXEL_PACK_BUFFER, mPboIds[i]);
+        glBufferData(GL_PIXEL_PACK_BUFFER, size, 0, GL_STREAM_READ);
+    }
+    glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
 }
 
 void GLHelper::InitProgram() {
@@ -94,10 +120,18 @@ void GLHelper::InitProgram() {
 }
 
 void GLHelper::DoRender() {
+#if USE_RB
     glBindRenderbuffer(GL_RENDERBUFFER, mRenderBufferID);
+#else
+    glBindTexture(GL_TEXTURE_2D, mOffscreenTextureID);
+#endif
     glBindFramebuffer(GL_FRAMEBUFFER, mFrameBufferID);
     
+#if USE_RB
     glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, mRenderBufferID);
+#else
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, mOffscreenTextureID, 0);
+#endif
     
     glClearColor(0.4, 0.7, 0.9, 1.f);
     glClear(GL_COLOR_BUFFER_BIT);
@@ -116,23 +150,23 @@ void GLHelper::DoRender() {
     glDrawArrays(GL_TRIANGLES,
                  0,
                  3);
-    
-#if USE_PBO
-    for(auto it = mCb.begin(); it != mCb.end(); )
-    {
-        if(--it->remainFrames <= 0)
-        {
-            size_t size = 4 * mWidth * mHeight;
-            glBindBuffer(GL_PIXEL_PACK_BUFFER, it->pbo);
-            GLchar *pixels = static_cast<GLchar*>(glMapBufferRange(GL_PIXEL_PACK_BUFFER, 0, size, GL_MAP_READ_BIT));
-            it->cb(mWidth, mHeight, size, pixels);
-            glUnmapBuffer(GL_PIXEL_PACK_BUFFER);
-            glDeleteBuffers(1, &it->pbo);
-            it = mCb.erase(it);
-        }
-        else
-        {
-            ++it;
+#if USE_PBO_CB
+    if (mPboEnable) {
+        for(auto it = mCb.begin(); it != mCb.end(); ) {
+            if(--it->remainFrames <= 0) {
+                mTimer.start();
+                size_t size = 4 * mWidth * mHeight;
+                glBindBuffer(GL_PIXEL_PACK_BUFFER, it->pbo);
+                GLchar *pixels = static_cast<GLchar*>(glMapBufferRange(GL_PIXEL_PACK_BUFFER, 0, size, GL_MAP_READ_BIT));
+                mTimer.stop();
+                it->readTime += mTimer.getElapsedTimeInMilliSec();
+                it->cb(mWidth, mHeight, size, pixels, it->readTime);
+                glUnmapBuffer(GL_PIXEL_PACK_BUFFER);
+                glDeleteBuffers(1, &it->pbo);
+                it = mCb.erase(it);
+            } else {
+                ++it;
+            }
         }
     }
 #endif
@@ -141,19 +175,41 @@ void GLHelper::DoRender() {
 void GLHelper::GetPixels(GetPixelsCallback getPixelsCallback) {
     size_t size = 4 * mWidth * mHeight;
     
-#if USE_PBO
-    GLuint pboBuffer;
-    glGenBuffers(1, &pboBuffer);
-    glBindBuffer(GL_PIXEL_PACK_BUFFER, pboBuffer);
-    glBufferData(GL_PIXEL_PACK_BUFFER, size, 0, GL_STREAM_READ);
-    glReadPixels(0, 0, mWidth, mHeight, GL_RGBA, GL_UNSIGNED_BYTE, 0);
-    mCb.emplace_back(2, pboBuffer, std::move(getPixelsCallback));
+    if (mPboEnable) {
+#if USE_PBO_CB
+        mTimer.start();
+        GLuint pboBuffer;
+        glGenBuffers(1, &pboBuffer);
+        glBindBuffer(GL_PIXEL_PACK_BUFFER, pboBuffer);
+        glBufferData(GL_PIXEL_PACK_BUFFER, size, 0, GL_STREAM_READ);
+        glReadPixels(0, 0, mWidth, mHeight, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+        mTimer.stop();
+        double readTime = mTimer.getElapsedTimeInMilliSec();
+        mCb.emplace_back(2, pboBuffer, std::move(getPixelsCallback), readTime);
 #else
-    GLchar *pixels = (GLchar *)malloc(size);
-    glReadPixels(0, 0, mWidth, mHeight, GL_RGBA, GL_UNSIGNED_BYTE, (GLvoid *)pixels);
-    getPixelsCallback(mWidth, mHeight, size, pixels);
-    free(pixels);
+        mTimer.start();
+        int index = mCurrentPboIndex % PBO_COUNT, nextIndex = (mCurrentPboIndex + 1) % PBO_COUNT;
+        glBindBuffer(GL_PIXEL_PACK_BUFFER, mPboIds[index]);
+        glReadPixels(0, 0, mWidth, mHeight, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+        
+        glBindBuffer(GL_PIXEL_PACK_BUFFER, mPboIds[nextIndex]);
+        GLchar *pixels = static_cast<GLchar *>(glMapBufferRange(GL_PIXEL_PACK_BUFFER, 0, size, GL_MAP_READ_BIT));
+        mTimer.stop();
+        double readTime = mTimer.getElapsedTimeInMilliSec();
+        getPixelsCallback(mWidth, mHeight, size, pixels, readTime);
+        glUnmapBuffer(GL_PIXEL_PACK_BUFFER);
+        mCurrentPboIndex = nextIndex;
 #endif
+        glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
+    } else {
+        mTimer.start();
+        GLchar *pixels = (GLchar *)malloc(size);
+        glReadPixels(0, 0, mWidth, mHeight, GL_RGBA, GL_UNSIGNED_BYTE, (GLvoid *)pixels);
+        mTimer.stop();
+        double readTime = mTimer.getElapsedTimeInMilliSec();
+        getPixelsCallback(mWidth, mHeight, size, pixels, readTime);
+        free(pixels);
+    }
 }
 
 

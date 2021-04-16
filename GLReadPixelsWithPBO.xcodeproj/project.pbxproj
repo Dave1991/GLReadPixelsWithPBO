@@ -16,6 +16,7 @@
 		593C74EC2615D302000EE499 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 593C74EB2615D302000EE499 /* main.m */; };
 		593C74F72615E422000EE499 /* GLTriangleView.mm in Sources */ = {isa = PBXBuildFile; fileRef = 593C74F52615E422000EE499 /* GLTriangleView.mm */; };
 		593C74FB2615E838000EE499 /* GLHelper.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 593C74F92615E838000EE499 /* GLHelper.cpp */; };
+		5970109E262993B700112E68 /* Timer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5970109C262993B700112E68 /* Timer.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -35,6 +36,8 @@
 		593C74F62615E422000EE499 /* GLTriangleView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = GLTriangleView.h; sourceTree = "<group>"; };
 		593C74F92615E838000EE499 /* GLHelper.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = GLHelper.cpp; sourceTree = "<group>"; };
 		593C74FA2615E838000EE499 /* GLHelper.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = GLHelper.hpp; sourceTree = "<group>"; };
+		5970109C262993B700112E68 /* Timer.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Timer.cpp; sourceTree = "<group>"; };
+		5970109D262993B700112E68 /* Timer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Timer.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -67,6 +70,8 @@
 		593C74D82615D301000EE499 /* GLReadPixelsWithPBO */ = {
 			isa = PBXGroup;
 			children = (
+				5970109C262993B700112E68 /* Timer.cpp */,
+				5970109D262993B700112E68 /* Timer.h */,
 				593C74F62615E422000EE499 /* GLTriangleView.h */,
 				593C74F52615E422000EE499 /* GLTriangleView.mm */,
 				593C74D92615D301000EE499 /* AppDelegate.h */,
@@ -160,6 +165,7 @@
 				593C74DB2615D301000EE499 /* AppDelegate.m in Sources */,
 				593C74EC2615D302000EE499 /* main.m in Sources */,
 				593C74F72615E422000EE499 /* GLTriangleView.mm in Sources */,
+				5970109E262993B700112E68 /* Timer.cpp in Sources */,
 				593C74DE2615D301000EE499 /* SceneDelegate.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -306,6 +312,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = YES;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = S7547KM97Y;
 				INFOPLIST_FILE = GLReadPixelsWithPBO/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -325,6 +332,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = YES;
+				DEVELOPMENT_TEAM = S7547KM97Y;
 				INFOPLIST_FILE = GLReadPixelsWithPBO/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
 				LD_RUNPATH_SEARCH_PATHS = (
