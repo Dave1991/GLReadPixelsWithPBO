@@ -8,7 +8,8 @@
 
 #include "GLHelper.hpp"
 #include <memory>
-#import <CoreVideo/CVOpenGLESTextureCache.h>
+#import <CoreVideo/CoreVideo.h>
+#import <AVFoundation/AVFoundation.h>
 
 @interface GLTriangleView () {
     std::shared_ptr<GLHelper> _glHelper;
@@ -40,62 +41,45 @@
         [self settingContext];
         
         CGFloat scale = [UIScreen mainScreen].scale;
+        GLuint shareTextureID = 0;
         if ([GLTriangleView supportsFastTextureUpload])
         {
             CVOpenGLESTextureCacheRef coreVideoTextureCache;
-            CVReturn err = CVOpenGLESTextureCacheCreate(kCFAllocatorDefault, NULL, (__bridge void *)self.context, NULL, &coreVideoTextureCache);
+            CVReturn err = CVOpenGLESTextureCacheCreate(kCFAllocatorDefault, NULL, self.context, NULL, &coreVideoTextureCache);
             if (err)
             {
-                NSAssert(NO, @"Error at CVOpenGLESTextureCacheCreate %d");
+                NSAssert(NO, @"Error at CVOpenGLESTextureCacheCreate");
             }
 
-            CVPixelBufferPoolCreatePixelBuffer (NULL, [assetWriterPixelBufferInput pixelBufferPool], &renderTarget);
+            NSDictionary *videoSettings = @{AVVideoCodecKey: AVVideoCodecH264,
+                                            AVVideoWidthKey: [NSNumber numberWithInt:CGRectGetWidth(frame)],
+                                            AVVideoHeightKey: [NSNumber numberWithInt:CGRectGetHeight(frame)]};
+            
+            AVAssetWriterInput* writerInput = [AVAssetWriterInput assetWriterInputWithMediaType:AVMediaTypeVideo
+                                                                                 outputSettings:videoSettings];
+            NSDictionary*sourcePixelBufferAttributesDictionary = [NSDictionary dictionaryWithObjectsAndKeys:[NSNumber numberWithInt:kCVPixelFormatType_32BGRA], kCVPixelBufferPixelFormatTypeKey, nil];
+            AVAssetWriterInputPixelBufferAdaptor *adaptor = [AVAssetWriterInputPixelBufferAdaptor assetWriterInputPixelBufferAdaptorWithAssetWriterInput:writerInput
+                                           sourcePixelBufferAttributes:sourcePixelBufferAttributesDictionary];
+            CVPixelBufferRef renderTarget;
+            CVPixelBufferPoolCreatePixelBuffer(NULL, adaptor.pixelBufferPool, &renderTarget);
 
             CVOpenGLESTextureRef renderTexture;
             CVOpenGLESTextureCacheCreateTextureFromImage (kCFAllocatorDefault, coreVideoTextureCache, renderTarget,
                                                           NULL, // texture attributes
                                                           GL_TEXTURE_2D,
                                                           GL_RGBA, // opengl format
-                                                          (int)videoSize.width,
-                                                          (int)videoSize.height,
+                                                          (int)CGRectGetWidth(frame),
+                                                          (int)CGRectGetHeight(frame),
                                                           GL_BGRA, // native iOS format
                                                           GL_UNSIGNED_BYTE,
                                                           0,
                                                           &renderTexture);
 
-            glBindTexture(CVOpenGLESTextureGetTarget(renderTexture), CVOpenGLESTextureGetName(renderTexture));
-            glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-            glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
             glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, CVOpenGLESTextureGetName(renderTexture), 0);
-            
-            CVReturn err = CVOpenGLESTextureCacheCreate(kCFAllocatorDefault, NULL, (__bridge void *)[[GPUImageOpenGLESContext sharedImageProcessingOpenGLESContext] context], NULL, &coreVideoTextureCache);
-                if (err)
-                {
-                    NSAssert(NO, @"Error at CVOpenGLESTextureCacheCreate %d");
-                }
-
-                CVPixelBufferPoolCreatePixelBuffer (NULL, [assetWriterPixelBufferInput pixelBufferPool], &renderTarget);
-
-                CVOpenGLESTextureRef renderTexture;
-                CVOpenGLESTextureCacheCreateTextureFromImage (kCFAllocatorDefault, coreVideoTextureCache, renderTarget,
-                                                              NULL, // texture attributes
-                                                              GL_TEXTURE_2D,
-                                                              GL_RGBA, // opengl format
-                                                              (int)videoSize.width,
-                                                              (int)videoSize.height,
-                                                              GL_BGRA, // native iOS format
-                                                              GL_UNSIGNED_BYTE,
-                                                              0,
-                                                              &renderTexture);
-
-                glBindTexture(CVOpenGLESTextureGetTarget(renderTexture), CVOpenGLESTextureGetName(renderTexture));
-                glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-                glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
-                glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, CVOpenGLESTextureGetName(renderTexture), 0);
+            shareTextureID = CVOpenGLESTextureGetName(renderTexture);
         }
-        _glHelper = std::make_shared<GLHelper>((int)CGRectGetWidth(frame) * scale, (int)CGRectGetHeight(frame) * scale);
+        _glHelper = std::make_shared<GLHelper>((int)CGRectGetWidth(frame) * scale, (int)CGRectGetHeight(frame) * scale, shareTextureID);
 
         [self bindDrawableObjectToRenderBuffer];
         
