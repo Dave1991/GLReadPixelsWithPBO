@@ -12,7 +12,7 @@
 #import <AVFoundation/AVFoundation.h>
 #import <Accelerate/Accelerate.h>
 
-#define USE_CVPB 0
+#define USE_CVPB 1
 
 @interface GLTriangleView () {
     std::shared_ptr<GLHelper> _glHelper;
