@@ -17,7 +17,7 @@
 #include "Timer.h"
 
 using GetPixelsCallback = std::function<void(int width, int height, uint64_t byteSize, GLchar *pixels, double readTime)>;
-const int PBO_COUNT = 3;
+const int PBO_COUNT = 2;
 class GLHelper {
 public:
     GLHelper(int width, int height, GLuint shareTextureID = 0);

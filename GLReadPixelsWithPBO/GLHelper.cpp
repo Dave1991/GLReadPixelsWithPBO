@@ -10,17 +10,12 @@
 #include <cstdlib>
 
 #define USE_PBO_CB 0
-#define USE_RB 0
 
 typedef struct {
     GLfloat position[3];
 } Vertex3;
 
 GLHelper::GLHelper(int width, int height, GLuint shareTextureID):mWidth(width), mHeight(height) {
-#if USE_RB
-    glGenRenderbuffers(1, &mRenderBufferID);
-    glBindRenderbuffer(GL_RENDERBUFFER, mRenderBufferID);
-#else
     if (shareTextureID > 0) {
         // use CVOpenGLESTextureRef
         mOffscreenTextureID = shareTextureID;
@@ -31,15 +26,10 @@ GLHelper::GLHelper(int width, int height, GLuint shareTextureID):mWidth(width), 
     if (shareTextureID <= 0) {
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, mWidth, mHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
     }
-#endif
     
     glGenFramebuffers(1, &mFrameBufferID);
     glBindFramebuffer(GL_FRAMEBUFFER, mFrameBufferID);
-#if USE_RB
-    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, mRenderBufferID);
-#else
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, mOffscreenTextureID, 0);
-#endif
     
     InitVBO();
     
@@ -122,18 +112,10 @@ void GLHelper::InitProgram() {
 }
 
 void GLHelper::DoRender() {
-#if USE_RB
-    glBindRenderbuffer(GL_RENDERBUFFER, mRenderBufferID);
-#else
     glBindTexture(GL_TEXTURE_2D, mOffscreenTextureID);
-#endif
     glBindFramebuffer(GL_FRAMEBUFFER, mFrameBufferID);
     
-#if USE_RB
-    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, mRenderBufferID);
-#else
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, mOffscreenTextureID, 0);
-#endif
     
     glClearColor(0.4, 0.7, 0.9, 1.f);
     glClear(GL_COLOR_BUFFER_BIT);
