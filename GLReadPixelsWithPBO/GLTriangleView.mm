@@ -10,16 +10,33 @@
 #include <memory>
 #import <CoreVideo/CoreVideo.h>
 #import <AVFoundation/AVFoundation.h>
+#import <Accelerate/Accelerate.h>
+
+#define USE_CVPB 0
 
 @interface GLTriangleView () {
     std::shared_ptr<GLHelper> _glHelper;
     dispatch_queue_t _decodeQueue;
+    CVPixelBufferRef _renderTarget;
 }
 @property (strong, nonatomic) EAGLContext *context;
 @property (strong, nonatomic) CADisplayLink *displayLink;
 @property (assign, nonatomic) BOOL isOnScreen;
 @property (strong, nonatomic) UIImageView *rbImageView;
 @end
+
+bool transformRGBA8ToBGRA8(void *rgbaData, CGSize size, size_t bytePerRow) {
+    const uint8_t permuteMap[4] = { 2, 1, 0, 3 };
+    vImage_Buffer rgba8;
+    vImage_Error error = kvImageNoError;
+    rgba8.width = size.width;
+    rgba8.height = size.height;
+    rgba8.rowBytes = bytePerRow;
+    rgba8.data = rgbaData;
+
+    error = vImagePermuteChannels_ARGB8888(&rgba8, &rgba8, permuteMap, kvImageNoFlags);
+    return (error == kvImageNoError);
+}
 
 @implementation GLTriangleView
 
@@ -42,43 +59,51 @@
         
         CGFloat scale = [UIScreen mainScreen].scale;
         GLuint shareTextureID = 0;
+#if USE_CVPB
         if ([GLTriangleView supportsFastTextureUpload])
         {
             CVOpenGLESTextureCacheRef coreVideoTextureCache;
             CVReturn err = CVOpenGLESTextureCacheCreate(kCFAllocatorDefault, NULL, self.context, NULL, &coreVideoTextureCache);
-            if (err)
-            {
+            if (err) {
                 NSAssert(NO, @"Error at CVOpenGLESTextureCacheCreate");
             }
 
-            NSDictionary *videoSettings = @{AVVideoCodecKey: AVVideoCodecH264,
-                                            AVVideoWidthKey: [NSNumber numberWithInt:CGRectGetWidth(frame)],
-                                            AVVideoHeightKey: [NSNumber numberWithInt:CGRectGetHeight(frame)]};
+            int width = CGRectGetWidth(frame), height = CGRectGetHeight(frame);
             
-            AVAssetWriterInput* writerInput = [AVAssetWriterInput assetWriterInputWithMediaType:AVMediaTypeVideo
-                                                                                 outputSettings:videoSettings];
-            NSDictionary*sourcePixelBufferAttributesDictionary = [NSDictionary dictionaryWithObjectsAndKeys:[NSNumber numberWithInt:kCVPixelFormatType_32BGRA], kCVPixelBufferPixelFormatTypeKey, nil];
-            AVAssetWriterInputPixelBufferAdaptor *adaptor = [AVAssetWriterInputPixelBufferAdaptor assetWriterInputPixelBufferAdaptorWithAssetWriterInput:writerInput
-                                           sourcePixelBufferAttributes:sourcePixelBufferAttributesDictionary];
-            CVPixelBufferRef renderTarget;
-            CVPixelBufferPoolCreatePixelBuffer(NULL, adaptor.pixelBufferPool, &renderTarget);
+            CFDictionaryRef empty; // empty value for attr value.
+            CFMutableDictionaryRef attrs;
+            empty = CFDictionaryCreate(kCFAllocatorDefault, NULL, NULL, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks); // our empty IOSurface properties dictionary
+            attrs = CFDictionaryCreateMutable(kCFAllocatorDefault, 1, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+            CFDictionarySetValue(attrs, kCVPixelBufferIOSurfacePropertiesKey, empty);
+            
+            err = CVPixelBufferCreate(kCFAllocatorDefault, width * scale, height * scale, kCVPixelFormatType_32BGRA, attrs, &_renderTarget);
+            
+            if (err) {
+                NSAssert(NO, @"Error at create pixel buffer");
+            }
 
+            int pbwidth = (int)CVPixelBufferGetWidth(_renderTarget);
+            int pbheight = (int)CVPixelBufferGetHeight(_renderTarget);
             CVOpenGLESTextureRef renderTexture;
-            CVOpenGLESTextureCacheCreateTextureFromImage (kCFAllocatorDefault, coreVideoTextureCache, renderTarget,
+            err = CVOpenGLESTextureCacheCreateTextureFromImage(kCFAllocatorDefault, coreVideoTextureCache, _renderTarget,
                                                           NULL, // texture attributes
                                                           GL_TEXTURE_2D,
                                                           GL_RGBA, // opengl format
-                                                          (int)CGRectGetWidth(frame),
-                                                          (int)CGRectGetHeight(frame),
-                                                          GL_BGRA, // native iOS format
+                                                          pbwidth,
+                                                          pbheight,
+                                                          GL_RGBA, // native iOS format
                                                           GL_UNSIGNED_BYTE,
                                                           0,
                                                           &renderTexture);
+            if (err) {
+                NSAssert(NO, @"Error at CVOpenGLESTextureCacheCreate");
+            }
 
-
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, CVOpenGLESTextureGetName(renderTexture), 0);
             shareTextureID = CVOpenGLESTextureGetName(renderTexture);
+            CFRelease(attrs);
+            CFRelease(empty);
         }
+#endif
         _glHelper = std::make_shared<GLHelper>((int)CGRectGetWidth(frame) * scale, (int)CGRectGetHeight(frame) * scale, shareTextureID);
 
         [self bindDrawableObjectToRenderBuffer];
@@ -122,10 +147,10 @@
     
 }
 
-- (void)updateViewWithPixels:(unsigned char *)pixels width:(int)width height:(int)height byteSize:(uint64_t)byteSize {
+- (void)updateViewWithPixels:(unsigned char *)pixels width:(int)width height:(int)height byteSize:(uint64_t)byteSize bytesPerRow:(size_t)bytesPerRow {
     unsigned char *copyPixels = (unsigned char *)malloc(byteSize);
     
-    uint64_t bytesPerRow = byteSize / height;
+//    uint64_t bytesPerRow = byteSize / height;
     
     // flip pixels only on x-axis
     for (int i = 0, j = height - 1; i < height && j >= 0; ++i, --j) {
@@ -142,7 +167,7 @@
                                                          width,
                                                          height,
                                                          8,
-                                                         byteSize / height,
+                                                         bytesPerRow,
                                                          colorSpaceRef,
                                                          kCGImageAlphaPremultipliedLast);
         
@@ -169,12 +194,32 @@
     if (self.isOnScreen) {
         [self present];
     } else {
+#if USE_CVPB
+        CGFloat beginTime = CFAbsoluteTimeGetCurrent();
+        if (kCVReturnSuccess == CVPixelBufferLockBaseAddress(_renderTarget, kCVPixelBufferLock_ReadOnly)) {
+            uint8_t *pixels = (uint8_t *)CVPixelBufferGetBaseAddress(_renderTarget);
+            CGFloat scale = [UIScreen mainScreen].scale;
+            int width = CVPixelBufferGetWidth(_renderTarget), height = CVPixelBufferGetHeight(_renderTarget);
+            size_t bytesPerRow = CVPixelBufferGetBytesPerRow(_renderTarget);
+            size_t byteSize = CVPixelBufferGetDataSize(_renderTarget);
+            [self updateViewWithPixels:(unsigned char *)pixels width:width height:height byteSize:byteSize bytesPerRow:bytesPerRow];
+            CVPixelBufferUnlockBaseAddress(_renderTarget, kCVPixelBufferLock_ReadOnly);
+            
+            CGFloat readTime = (CFAbsoluteTimeGetCurrent() - beginTime) * 100;
+            if ([self.delegate respondsToSelector:@selector(onUpdate:readTime:)]) {
+                [self.delegate onUpdate:self readTime:readTime];
+            }
+            
+        }
+#else
         _glHelper->GetPixels([&](int width, int height, uint64_t byteSize, GLchar *pixels, double readTime) {
-            [self updateViewWithPixels:(unsigned char *)pixels width:width height:height byteSize:byteSize];
+            [self updateViewWithPixels:(unsigned char *)pixels width:width height:height byteSize:byteSize bytesPerRow:byteSize / height];
             if ([self.delegate respondsToSelector:@selector(onUpdate:readTime:)]) {
                 [self.delegate onUpdate:self readTime:readTime];
             }
         });
+#endif
+        
     }
 }
 

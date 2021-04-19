@@ -28,7 +28,9 @@ GLHelper::GLHelper(int width, int height, GLuint shareTextureID):mWidth(width), 
         glGenTextures(1, &mOffscreenTextureID);
     }
     glBindTexture(GL_TEXTURE_2D, mOffscreenTextureID);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, mWidth, mHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+    if (shareTextureID <= 0) {
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, mWidth, mHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+    }
 #endif
     
     glGenFramebuffers(1, &mFrameBufferID);

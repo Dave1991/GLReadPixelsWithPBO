@@ -17,6 +17,9 @@
 		593C74F72615E422000EE499 /* GLTriangleView.mm in Sources */ = {isa = PBXBuildFile; fileRef = 593C74F52615E422000EE499 /* GLTriangleView.mm */; };
 		593C74FB2615E838000EE499 /* GLHelper.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 593C74F92615E838000EE499 /* GLHelper.cpp */; };
 		5970109E262993B700112E68 /* Timer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5970109C262993B700112E68 /* Timer.cpp */; };
+		597010A3262D230500112E68 /* AVFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 597010A2262D230500112E68 /* AVFoundation.framework */; };
+		597010A5262D230B00112E68 /* CoreVideo.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 597010A4262D230B00112E68 /* CoreVideo.framework */; };
+		597013C5262D824000112E68 /* Accelerate.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 597013C4262D824000112E68 /* Accelerate.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -38,6 +41,9 @@
 		593C74FA2615E838000EE499 /* GLHelper.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = GLHelper.hpp; sourceTree = "<group>"; };
 		5970109C262993B700112E68 /* Timer.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Timer.cpp; sourceTree = "<group>"; };
 		5970109D262993B700112E68 /* Timer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Timer.h; sourceTree = "<group>"; };
+		597010A2262D230500112E68 /* AVFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVFoundation.framework; path = System/Library/Frameworks/AVFoundation.framework; sourceTree = SDKROOT; };
+		597010A4262D230B00112E68 /* CoreVideo.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreVideo.framework; path = System/Library/Frameworks/CoreVideo.framework; sourceTree = SDKROOT; };
+		597013C4262D824000112E68 /* Accelerate.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Accelerate.framework; path = System/Library/Frameworks/Accelerate.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -45,6 +51,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				597013C5262D824000112E68 /* Accelerate.framework in Frameworks */,
+				597010A3262D230500112E68 /* AVFoundation.framework in Frameworks */,
+				597010A5262D230B00112E68 /* CoreVideo.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -56,6 +65,7 @@
 			children = (
 				593C74D82615D301000EE499 /* GLReadPixelsWithPBO */,
 				593C74D72615D301000EE499 /* Products */,
+				597010A1262D230500112E68 /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -89,6 +99,16 @@
 				593C74FA2615E838000EE499 /* GLHelper.hpp */,
 			);
 			path = GLReadPixelsWithPBO;
+			sourceTree = "<group>";
+		};
+		597010A1262D230500112E68 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				597013C4262D824000112E68 /* Accelerate.framework */,
+				597010A4262D230B00112E68 /* CoreVideo.framework */,
+				597010A2262D230500112E68 /* AVFoundation.framework */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -319,7 +339,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.tencent.GLReadPixelsWithPBO;
+				PRODUCT_BUNDLE_IDENTIFIER = com.tencent.GLReadPixelsDemo;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -339,7 +359,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.tencent.GLReadPixelsWithPBO;
+				PRODUCT_BUNDLE_IDENTIFIER = com.tencent.GLReadPixelsDemo;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
