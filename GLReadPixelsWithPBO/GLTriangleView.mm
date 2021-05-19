@@ -23,6 +23,7 @@
 @property (strong, nonatomic) CADisplayLink *displayLink;
 @property (assign, nonatomic) BOOL isOnScreen;
 @property (strong, nonatomic) UIImageView *rbImageView;
+@property (strong, nonatomic) NSMutableArray *intervalArray;
 @end
 
 bool transformRGBA8ToBGRA8(void *rgbaData, CGSize size, size_t bytePerRow) {
@@ -59,6 +60,7 @@ bool transformRGBA8ToBGRA8(void *rgbaData, CGSize size, size_t bytePerRow) {
         
         CGFloat scale = [UIScreen mainScreen].scale;
         GLuint shareTextureID = 0;
+        self.intervalArray = [NSMutableArray new];
 #if USE_CVPB
         if ([GLTriangleView supportsFastTextureUpload])
         {
@@ -121,7 +123,7 @@ bool transformRGBA8ToBGRA8(void *rgbaData, CGSize size, size_t bytePerRow) {
 
 #pragma mark -
 #pragma mark Manage fast texture upload
-+ (BOOL)supportsFastTextureUpload;
++ (BOOL)supportsFastTextureUpload
 {
 #if TARGET_IPHONE_SIMULATOR
     return NO;
@@ -198,18 +200,27 @@ bool transformRGBA8ToBGRA8(void *rgbaData, CGSize size, size_t bytePerRow) {
         CGFloat beginTime = CFAbsoluteTimeGetCurrent();
         if (kCVReturnSuccess == CVPixelBufferLockBaseAddress(_renderTarget, kCVPixelBufferLock_ReadOnly)) {
             uint8_t *pixels = (uint8_t *)CVPixelBufferGetBaseAddress(_renderTarget);
-            CGFloat scale = [UIScreen mainScreen].scale;
             int width = CVPixelBufferGetWidth(_renderTarget), height = CVPixelBufferGetHeight(_renderTarget);
             size_t bytesPerRow = CVPixelBufferGetBytesPerRow(_renderTarget);
             size_t byteSize = CVPixelBufferGetDataSize(_renderTarget);
             [self updateViewWithPixels:(unsigned char *)pixels width:width height:height byteSize:byteSize bytesPerRow:bytesPerRow];
             CVPixelBufferUnlockBaseAddress(_renderTarget, kCVPixelBufferLock_ReadOnly);
             
-            CGFloat readTime = (CFAbsoluteTimeGetCurrent() - beginTime) * 100;
-            if ([self.delegate respondsToSelector:@selector(onUpdate:readTime:)]) {
-                [self.delegate onUpdate:self readTime:readTime];
+            CGFloat readTime = (CFAbsoluteTimeGetCurrent() - beginTime) * 1000;
+            [self.intervalArray addObject:@(readTime)];
+            if (self.intervalArray.count >= 60) {
+                if (self.intervalArray.count >= 60) {
+                    double sum = 0;
+                    for (NSNumber *duration in self.intervalArray) {
+                        sum += [duration doubleValue];
+                    }
+                    double avg = sum / self.intervalArray.count;
+                    [self.intervalArray removeAllObjects];
+                    if ([self.delegate respondsToSelector:@selector(onUpdate:readTime:)]) {
+                        [self.delegate onUpdate:self readTime:readTime];
+                    }
+                }
             }
-            
         }
 #else
         _glHelper->GetPixels([&](int width, int height, uint64_t byteSize, GLchar *pixels, double readTime) {
